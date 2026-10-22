@@ -8,7 +8,7 @@ Stay above a volume threshold for three seconds, and the text bursts.
 
 ## How it works
 
-1. **Write:** Enter English or Chinese text, up to 80 characters.
+1. **Write:** Enter English or Traditional Chinese text, up to 80 characters.
 2. **Allow the microphone:** Click Next and grant permission.
 3. **Calibrate:** Stay quiet for two seconds so the app can measure background noise.
 4. **Start:** Speak comfortably and watch the text react.
@@ -22,6 +22,8 @@ three seconds instead.
 
 - Cream-white background and black text, pixels, and controls.
 - Minimal pixel-art style, designed for desktop and mobile.
+- Use Traditional Chinese for Chinese interface text, instructions, and examples.
+  Keep user-entered text as written; do not automatically convert it.
 - Pixels move away from their original positions as volume rises and return
   as volume falls.
 - Two meters show current volume and progress toward the burst.
@@ -83,7 +85,7 @@ testing, not public internet hosting.
 
 ## What to check
 
-- English and Chinese fit on desktop and mobile screens.
+- English and Traditional Chinese fit on desktop and mobile screens.
 - Empty text and entries over 80 characters show helpful errors.
 - Louder input separates pixels; quiet restores them.
 - A burst happens once, only after three continuous seconds above the threshold.
@@ -99,6 +101,7 @@ phone HTTPS permissions still need testing on the intended devices.
 ## Things to keep in mind
 
 - Microphone loudness varies by device; calibration and sensitivity are essential.
-- Chinese glyphs use local system fonts, so their appearance may vary.
+- Prefer local fonts that support Traditional Chinese; glyph appearance may
+  still vary between devices.
 - Short phrases are clearer than dense text.
 - Limit the number of particles to keep animation smooth on phones.

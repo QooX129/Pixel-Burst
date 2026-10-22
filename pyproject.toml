@@ -1,0 +1,16 @@
+[project]
+name = "pixel-burst"
+version = "0.1.0"
+description = "A local, voice-driven pixel text experience"
+requires-python = ">=3.11"
+dependencies = ["flask>=3.1,<4"]
+
+[dependency-groups]
+dev = ["pytest>=8,<10", "playwright>=1.50,<2"]
+
+[tool.uv]
+default-groups = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

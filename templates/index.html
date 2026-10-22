@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f1e7">
+  <title>Let it out / Pixel Burst</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <script type="module" src="{{ url_for('static', filename='app.js') }}"></script>
+</head>
+<body>
+  <header>
+    <a class="wordmark" href="/" aria-label="Pixel Burst home">[ PIXEL BURST ]</a>
+    <span class="eyebrow">A SMALL SPACE TO LET IT OUT</span>
+  </header>
+  <main>
+    <section id="entry" aria-labelledby="entry-title">
+      <p class="eyebrow">01 / PUT IT INTO WORDS</p>
+      <h1 id="entry-title">Some things<br>need to break.</h1>
+      <p class="intro">Give a thought a shape. Use your voice to pull it apart.<br>
+        Let it settle, or hold it long enough to let it go.</p>
+      <form id="text-form" novalidate>
+        <label for="text-input">What would you like to let out?</label>
+        <textarea id="text-input" rows="3" placeholder="Type something here / 在這裡寫下"
+          aria-describedby="text-help text-count input-error" autocomplete="off" spellcheck="false"></textarea>
+        <div class="input-meta">
+          <span id="text-help">English or Traditional Chinese. Up to 80 characters.</span>
+          <output id="text-count" for="text-input">0 / 80</output>
+        </div>
+        <p id="input-error" class="error" role="alert"></p>
+        <div class="actions">
+          <button type="submit">Next / use microphone <span aria-hidden="true">→</span></button>
+          <button id="manual-entry" type="button" class="secondary">Try without a microphone</button>
+        </div>
+      </form>
+      <p class="privacy">LOCAL ONLY / Your words and microphone audio stay in this browser.
+        Nothing is recorded or saved.</p>
+    </section>
+
+    <section id="experience" hidden aria-labelledby="session-title">
+      <div class="session-heading">
+        <div>
+          <p class="eyebrow" id="step-label">02 / FIND YOUR LEVEL</p>
+          <h1 id="session-title">Let it out.</h1>
+        </div>
+        <button id="edit" class="secondary" type="button">Start over</button>
+      </div>
+      <p id="status" role="status" aria-live="polite" aria-atomic="true" tabindex="-1"></p>
+      <div id="stage">
+        <canvas id="pixels" aria-hidden="true"></canvas>
+        <p id="text-equivalent" class="sr-only"></p>
+      </div>
+      <div id="meters">
+        <div class="meter-block">
+          <div class="meter-label"><label for="volume">Relative volume</label><span id="volume-label">QUIET</span></div>
+          <progress id="volume" max="1" value="0">0%</progress>
+        </div>
+        <div class="meter-block">
+          <div class="meter-label"><label for="hold">Sustained hold</label><span id="hold-label">0.0 / 3.0 s</span></div>
+          <progress id="hold" max="1" value="0">0%</progress>
+        </div>
+      </div>
+      <div id="sensitivity-panel">
+        <label for="sensitivity">Sensitivity <output id="sensitivity-value">50</output></label>
+        <input id="sensitivity" type="range" min="0" max="100" value="50"
+          aria-describedby="sensitivity-help">
+        <p id="sensitivity-help">Higher = easier to burst. Use a comfortable voice; you never need to shout.</p>
+      </div>
+      <div class="actions session-actions">
+        <button id="start" type="button" hidden>Start</button>
+        <button id="calibrate" class="secondary" type="button" hidden>Recalibrate</button>
+        <button id="retry" type="button" hidden>Retry microphone</button>
+        <button id="switch-manual" class="secondary" type="button" hidden>Use manual mode</button>
+        <button id="manual-hold" type="button" hidden>Hold to let go / 3 seconds</button>
+        <button id="restart" type="button" hidden>Enter new words <span aria-hidden="true">→</span></button>
+      </div>
+      <p id="mode-note" class="privacy">MICROPHONE / No audio is recorded or sent anywhere.</p>
+    </section>
+    <noscript>This experience needs JavaScript for local microphone analysis and pixel animation.</noscript>
+  </main>
+  <footer><span>WORDS → PIXELS → NOTHING</span><span>TAKE A BREATH. TAKE YOUR TIME.</span></footer>
+</body>
+</html>
