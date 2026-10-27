@@ -49,8 +49,21 @@ uv run app.py
 Then open **http://127.0.0.1:8000**. The Windows assignments remain active in
 that terminal until you clear them or close it.
 
-This is a local development/installation prototype, **not a public deployment
-server**. Debug mode and the automatic reloader are disabled.
+Flask is only the local development server; the application itself runs entirely
+in the browser and can also be hosted as a static site.
+
+## Publish on GitHub Pages
+
+The `Deploy to GitHub Pages` workflow builds the static site and deploys it on
+every push to `main`. For this repository, the site URL is
+<https://qoox129.github.io/Pixel-Burst/>.
+
+In the repository's **Settings → Pages**, select **GitHub Actions** as the
+build and deployment source if it is not already selected. After pushing to
+`main`, follow the build and deploy jobs in the **Actions** tab. GitHub Pages
+serves the app over HTTPS, which allows browsers to request microphone access
+after the user explicitly starts microphone mode. The local Flask server's
+debug mode and automatic reloader remain disabled.
 
 ## Experience
 

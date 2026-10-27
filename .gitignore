@@ -6,4 +6,5 @@ __pycache__/
 .certs/
 *.pem
 *.key
+.DS_Store
 test-results/
