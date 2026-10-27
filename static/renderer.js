@@ -1,5 +1,7 @@
 import { characters, clamp } from "./interaction.js";
 
+export const MAX_PARTICLES = 12000;
+
 export class PixelRenderer {
   constructor(canvas) {
     this.canvas = canvas;
@@ -28,52 +30,57 @@ export class PixelRenderer {
     let lines = [];
     let size = Math.min(96, Math.floor(this.height / 2));
     const fontFamily = getComputedStyle(this.canvas).fontFamily;
+    let spacing = 0;
+    const lineWidth = line => line.reduce((width, glyph) => width + ctx.measureText(glyph).width, 0)
+      + Math.max(0, line.length - 1) * spacing;
     for (; size >= 1; size--) {
-      ctx.font = `bold ${size}px ${fontFamily}`;
-      lines = [""];
+      ctx.font = `normal ${size}px ${fontFamily}`;
+      spacing = Math.max(2, size * .08);
+      lines = [[]];
       for (const glyph of glyphs) {
         if (glyph === "\n" || glyph === "\r\n") {
-          lines.push("");
+          lines.push([]);
         } else {
           const last = lines.length - 1;
-          if (lines[last] && ctx.measureText(lines[last] + glyph).width > maxWidth) lines.push(glyph);
-          else lines[last] += glyph;
+          if (lines[last].length && lineWidth([...lines[last], glyph]) > maxWidth) lines.push([glyph]);
+          else lines[last].push(glyph);
         }
       }
       if (lines.length * size * 1.3 <= maxHeight &&
-          lines.every(line => ctx.measureText(line).width <= maxWidth)) break;
+          lines.every(line => lineWidth(line) <= maxWidth)) break;
     }
-    ctx.textAlign = "center";
+    ctx.textAlign = "left";
     ctx.textBaseline = "middle";
     ctx.fillStyle = "#000";
     const lineHeight = size * 1.3;
     lines.forEach((line, index) => {
-      ctx.fillText(line, this.width / 2, this.height / 2 + (index - (lines.length - 1) / 2) * lineHeight);
+      let x = (this.width - lineWidth(line)) / 2;
+      const y = this.height / 2 + (index - (lines.length - 1) / 2) * lineHeight;
+      for (const glyph of line) {
+        ctx.fillText(glyph, x, y);
+        x += ctx.measureText(glyph).width + spacing;
+      }
     });
     const image = ctx.getImageData(0, 0, this.width, this.height);
-    let step = Math.max(2, Math.ceil(Math.sqrt(this.width * this.height / 6500)));
-    while (Math.ceil(this.width / step) * Math.ceil(this.height / step) > 6500) step++;
-    this.particles = [];
-    for (let y = 0; y < this.height; y += step) {
-      for (let x = 0; x < this.width; x += step) {
-        let ink = false;
-        for (let dy = 0; dy < step && y + dy < this.height && !ink; dy++) {
-          for (let dx = 0; dx < step && x + dx < this.width; dx++) {
-            if (image.data[((y + dy) * this.width + x + dx) * 4 + 3] > 100) {
-              ink = true;
-              break;
-            }
-          }
-        }
-        if (ink) {
+    let step = size < 16 ? 1 : 2;
+    // Sample cell centers instead of filling any cell touched by ink, which thickens strokes.
+    for (;;) {
+      this.particles = [];
+      for (let y = 0; y < this.height; y += step) {
+        for (let x = 0; x < this.width; x += step) {
+          const sampleX = Math.min(this.width - 1, x + Math.floor(step / 2));
+          const sampleY = Math.min(this.height - 1, y + Math.floor(step / 2));
+          if (image.data[(sampleY * this.width + sampleX) * 4 + 3] <= 127) continue;
           const angle = Math.random() * Math.PI * 2;
           const distance = 25 + Math.random() * Math.min(this.width, this.height) * .5;
           this.particles.push({
             x, y, dx: Math.cos(angle) * distance, dy: Math.sin(angle) * distance,
-            speed: .7 + Math.random() * .6, size: Math.max(1, step - 1),
+            speed: .7 + Math.random() * .6, size: step,
           });
         }
       }
+      if (this.particles.length <= MAX_PARTICLES) break;
+      step++;
     }
     this.draw(this.intensity, this.burstProgress);
   }

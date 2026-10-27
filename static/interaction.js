@@ -1,4 +1,4 @@
-export const HOLD_MS = 3000;
+export const HOLD_MS = 2000;
 export const HYSTERESIS = 0.05;
 export const clamp = (value, min = 0, max = 1) => Math.max(min, Math.min(max, value));
 
@@ -22,9 +22,8 @@ export function rms(samples) {
   return Math.sqrt(sum / samples.length);
 }
 
-export function relativeLevel(amplitude, noise) {
-  const floor = Math.max(noise * 1.8, 0.003);
-  return clamp((amplitude - floor) / Math.max(0.08, floor * 4));
+export function relativeLevel(amplitude) {
+  return clamp((amplitude - 0.003) / 0.08);
 }
 
 export function smoothLevel(current, target, dt) {

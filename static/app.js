@@ -1,4 +1,4 @@
-import { characters, validateText, thresholdFor, rms, relativeLevel, smoothLevel, HoldTimer, clamp } from "./interaction.js";
+import { HOLD_MS, characters, validateText, thresholdFor, rms, relativeLevel, smoothLevel, HoldTimer, clamp } from "./interaction.js";
 import { PixelRenderer } from "./renderer.js";
 
 const $ = id => document.getElementById(id);
@@ -12,9 +12,6 @@ let stream = null;
 let audioContext = null;
 let analyser = null;
 let samples = null;
-let noise = 0.003;
-let calibrationSamples = [];
-let calibrationStart = 0;
 let burstStart = 0;
 let intensity = 0;
 let manualPressed = false;
@@ -23,13 +20,15 @@ let manualKey = null;
 let frame = null;
 let previousTime = 0;
 let composing = false;
+let focused = document.hasFocus();
+let resumingContext = null;
 
 function announce(message) { $("status").textContent = message; }
 
 function resetHold() {
   timer.reset();
   $("hold").value = 0;
-  $("hold-label").textContent = "0.0 / 3.0 s";
+  $("hold-label").textContent = `0.0 / ${(HOLD_MS / 1000).toFixed(1)} s`;
 }
 
 function releaseManual() {
@@ -72,21 +71,18 @@ function showState(next, message) {
   if (message) announce(message);
   $("entry").hidden = state !== "entry";
   $("experience").hidden = state === "entry";
-  $("start").hidden = !["ready", "paused"].includes(state);
-  $("start").textContent = state === "paused" ? "Resume" : "Start";
-  $("calibrate").hidden = mode !== "mic" || !["ready", "active", "paused"].includes(state);
   $("retry").hidden = state !== "error";
-  $("switch-manual").hidden = mode !== "mic" || !["requesting", "calibrating", "ready", "paused", "error"].includes(state);
+  $("switch-manual").hidden = mode !== "mic" || !["requesting", "ready", "error"].includes(state);
   $("manual-hold").hidden = mode !== "manual" || state !== "active";
   $("restart").hidden = state !== "done";
   $("meters").hidden = ["bursting", "done"].includes(state);
-  $("sensitivity-panel").hidden = mode === "manual" || !["ready", "active", "paused"].includes(state);
+  $("sensitivity-panel").hidden = mode === "manual" || !["ready", "active"].includes(state);
   $("mode-note").textContent = mode === "manual"
     ? "MANUAL MODE / Simulated intensity, not microphone volume. Hold with a pointer, Space, or Enter."
     : "MICROPHONE / No audio is recorded or sent anywhere. Use a comfortable voice.";
   $("step-label").textContent = ["bursting", "done"].includes(state) ? "03 / LET IT GO"
     : mode === "manual" ? "02 / MANUAL MODE" : "02 / FIND YOUR LEVEL";
-  if (["active", "calibrating", "bursting"].includes(state)) {
+  if (["active", "bursting"].includes(state)) {
     if (frame === null) {
       previousTime = performance.now();
       frame = requestAnimationFrame(tick);
@@ -106,18 +102,21 @@ function fail(message, error) {
   $("status").focus();
 }
 
-function pause(message = "Paused. Select Resume when you are ready. Your hold has reset.") {
-  if (!["active", "calibrating", "ready"].includes(state)) return;
-  clearLevels();
-  if (state === "calibrating") {
-    generation++;
-    disposeAudio();
-    showState("error", "Calibration was interrupted. Retry the microphone when you are ready.");
-  } else {
-    showState("paused", message);
-    if (audioContext?.state === "running") {
-      audioContext.suspend().catch(error => fail("Could not pause the microphone. Please retry.", error));
+async function restoreAudio() {
+  const context = audioContext;
+  if (!context || resumingContext === context) return;
+  const request = generation;
+  resumingContext = context;
+  try {
+    await context.resume();
+    if (request !== generation || context !== audioContext) return;
+    if (context.state !== "running") throw new Error("Audio context did not resume");
+  } catch (error) {
+    if (request === generation && context === audioContext) {
+      fail("Audio could not restart automatically. Retry the microphone or use manual mode.", error);
     }
+  } finally {
+    if (resumingContext === context) resumingContext = null;
   }
 }
 
@@ -133,7 +132,7 @@ async function beginMicrophone() {
   disposeAudio();
   clearLevels();
   mode = "mic";
-  showState("requesting", "Allow microphone access. Then stay quiet for two seconds to measure the room.");
+  showState("requesting", "Allow microphone access. The experience will start immediately.");
   if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
     fail("Microphone access requires a supported browser on localhost or trusted HTTPS. You can use manual mode instead.");
     return;
@@ -165,13 +164,12 @@ async function beginMicrophone() {
       track.onmute = () => fail("The microphone input was interrupted or muted. Check your input and retry.");
     }
     context.onstatechange = () => {
-      if (context.state !== "running" && ["active", "calibrating"].includes(state)) {
-        pause("Audio was interrupted. Select Resume to continue; your hold has reset.");
+      if (context.state !== "running" && state === "active") {
+        clearLevels();
       }
     };
-    calibrationSamples = [];
-    calibrationStart = performance.now();
-    showState("calibrating", "Calibrating for two seconds. Stay quiet and let the room settle.");
+    showState("ready");
+    await start();
   } catch (error) {
     if (request === generation) fail(permissionMessage(error), error);
     else requestedStream?.getTracks().forEach(track => track.stop());
@@ -183,31 +181,29 @@ function beginManual() {
   disposeAudio();
   clearLevels();
   mode = "manual";
-  showState("ready", "Manual mode: select Start, then hold the button for three seconds. Release to restore your words.");
-  $("start").focus();
+  showState("ready");
+  start();
 }
 
 async function start() {
-  if (!["ready", "paused"].includes(state)) return;
+  if (state !== "ready") return;
   const request = generation;
-  const wasPaused = state === "paused";
   try {
     if (mode === "mic") {
       if (!audioContext || !stream?.active) {
-        fail("The microphone is no longer available. Retry to calibrate it again.");
+        fail("The microphone is no longer available. Retry to reconnect it.");
         return;
       }
       await audioContext.resume();
-      if (request !== generation || !["ready", "paused"].includes(state)) return;
+      if (request !== generation || state !== "ready") return;
       if (audioContext.state !== "running") throw new Error("Audio context did not resume");
     }
-    if (document.hidden) return;
     clearLevels();
     showState("active", mode === "manual"
-      ? "Hold the button for three continuous seconds to burst. Release to let the pixels settle."
-      : "Use your voice to move the pixels. Hold above the threshold for three seconds to let go.");
+      ? "Manual mode: hold the button for two continuous seconds to burst. Release to let the pixels settle."
+      : "Use your voice to move the pixels. Hold above the threshold for two seconds to let go.");
     if (mode === "manual") $("manual-hold").focus();
-    else if (wasPaused || document.activeElement === $("start")) $("status").focus();
+    else $("status").focus();
   } catch (error) {
     if (request === generation) fail("Audio could not resume. Retry the microphone or use manual mode.", error);
   }
@@ -226,41 +222,29 @@ function tick(now) {
   const elapsed = now - previousTime;
   const dt = Math.min(elapsed / 1000, .05);
   previousTime = now;
-  if (elapsed > 500 && ["active", "calibrating"].includes(state)) {
-    pause("Playback was interrupted. Resume when ready; your hold has reset.");
+  if (elapsed > 500 && state === "active") {
+    clearLevels();
+  }
+  if (state === "active" && (document.hidden || !focused)) {
+    clearLevels();
+    frame = requestAnimationFrame(tick);
     return;
   }
-  if (state === "calibrating" || (state === "active" && mode === "mic")) {
-    if (!analyser || audioContext?.state !== "running") {
-      pause("Audio was interrupted. Resume when ready.");
+  if (state === "active" && mode === "mic") {
+    if (!analyser || !audioContext) {
+      fail("The microphone is no longer available. Retry to reconnect it.");
+      return;
+    }
+    if (audioContext.state !== "running") {
+      clearLevels();
+      restoreAudio();
+      frame = requestAnimationFrame(tick);
       return;
     }
     analyser.getFloatTimeDomainData(samples);
   }
-  if (state === "calibrating") {
-    const amplitude = rms(samples);
-    calibrationSamples.push(amplitude);
-    const progress = clamp((now - calibrationStart) / 2000);
-    $("volume").value = amplitude;
-    $("volume-label").textContent = `CALIBRATING ${Math.round(progress * 100)}%`;
-    if (progress >= 1) {
-      const sorted = calibrationSamples.slice().sort((a, b) => a - b);
-      noise = sorted[Math.floor(sorted.length * .8)];
-      if (Math.max(...sorted) < 0.0000001) {
-        fail("The microphone is returning silence. Check its mute switch and input settings, then retry.");
-        return;
-      }
-      if (noise > .12) {
-        fail("The room or microphone input is too loud to calibrate. Try a quieter space or reduce input gain.");
-        return;
-      }
-      clearLevels();
-      showState("ready", "Room measured. Adjust sensitivity if needed, then select Start. A comfortable voice is enough.");
-      $("start").focus();
-      return;
-    }
-  } else if (state === "active") {
-    const raw = mode === "manual" ? Number(manualPressed) : relativeLevel(rms(samples), noise);
+  if (state === "active") {
+    const raw = mode === "manual" ? Number(manualPressed) : relativeLevel(rms(samples));
     intensity = smoothLevel(intensity, raw, dt);
     $("volume").value = intensity;
     const threshold = mode === "manual" ? .5 : thresholdFor(Number($("sensitivity").value));
@@ -268,7 +252,7 @@ function tick(now) {
     $("volume-label").textContent = mode === "manual" ? "SIMULATED"
       : raw >= threshold ? "ABOVE THRESHOLD" : raw >= threshold - .05 ? "NEAR THRESHOLD" : "BELOW THRESHOLD";
     $("hold").value = timer.progress;
-    $("hold-label").textContent = `${(timer.progress * 3).toFixed(1)} / 3.0 s`;
+    $("hold-label").textContent = `${(timer.progress * HOLD_MS / 1000).toFixed(1)} / ${(HOLD_MS / 1000).toFixed(1)} s`;
     renderer.draw(intensity);
     if (didBurst) burst(now);
   } else if (state === "bursting") {
@@ -282,7 +266,7 @@ function tick(now) {
       return;
     }
   }
-  if (frame === null && ["active", "calibrating", "bursting"].includes(state)) frame = requestAnimationFrame(tick);
+  if (frame === null && ["active", "bursting"].includes(state)) frame = requestAnimationFrame(tick);
 }
 
 function enterSession(useMicrophone) {
@@ -333,9 +317,7 @@ $("text-form").addEventListener("submit", event => {
 });
 $("manual-entry").addEventListener("click", () => enterSession(false));
 $("retry").addEventListener("click", beginMicrophone);
-$("calibrate").addEventListener("click", beginMicrophone);
 $("switch-manual").addEventListener("click", beginManual);
-$("start").addEventListener("click", start);
 $("edit").addEventListener("click", restart);
 $("restart").addEventListener("click", restart);
 $("sensitivity").addEventListener("input", () => {
@@ -375,8 +357,13 @@ holdButton.addEventListener("keyup", event => {
 holdButton.addEventListener("contextmenu", event => event.preventDefault());
 holdButton.addEventListener("blur", releaseManual);
 window.addEventListener("blur", () => {
+  focused = false;
   releaseManual();
-  if (state === "active") pause();
+  if (state === "active") clearLevels();
+});
+window.addEventListener("focus", () => {
+  focused = true;
+  if (state === "active") clearLevels();
 });
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) {
@@ -385,7 +372,9 @@ document.addEventListener("visibilitychange", () => {
       generation++;
       disposeAudio();
       showState("error", "Microphone setup was interrupted. Retry when you return.");
-    } else pause();
+    } else if (state === "active") clearLevels();
+  } else if (state === "active") {
+    clearLevels();
   }
 });
 window.addEventListener("pagehide", () => {

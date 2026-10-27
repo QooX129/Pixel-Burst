@@ -4,19 +4,21 @@
 
 A local web app where your voice breaks words into pixels.
 Speak louder to pull the pixels apart. Get quieter to let them return.
-Stay above a volume threshold for three seconds, and the text bursts.
+Stay above a volume threshold for two seconds, and the text bursts.
 
 ## How it works
 
 1. **Write:** Enter English or Traditional Chinese text, up to 80 characters.
 2. **Allow the microphone:** Click Next and grant permission.
-3. **Calibrate:** Stay quiet for two seconds so the app can measure background noise.
-4. **Start:** Speak comfortably and watch the text react.
-5. **Let go:** Hold above the threshold for three continuous seconds to burst the text.
-6. **Restart:** Enter new words and try again.
+3. **Start automatically:** Microphone mode begins after permission is granted;
+   no separate Start click or calibration is needed.
+   Speak comfortably and watch the text react.
+4. **Let go:** Hold above the threshold for two continuous seconds to burst the text.
+5. **Restart:** Enter new words and try again.
 
 If microphone access is unavailable, use a manual mode: hold a button for
-three seconds instead.
+two seconds instead. Manual mode starts immediately when selected, with no
+separate Start button.
 
 ## Look and feel
 
@@ -33,10 +35,11 @@ three seconds instead.
 
 - Adjustable sensitivity makes the effect easier or harder to trigger.
   Users should not need to strain or shout at maximum volume.
-- Dropping below the threshold resets the three-second hold. A small tolerance
+- Dropping below the threshold resets the two-second hold. A small tolerance
   prevents tiny volume fluctuations from resetting it.
-- Changing sensitivity, recalibrating, or leaving the tab resets progress.
-  Interrupted sessions require Resume or a new calibration.
+- Changing sensitivity or leaving the tab resets progress.
+  The experience continues automatically on return, without a paused state or
+  Resume button. Audio recovery failures offer retry or manual mode.
 - After a burst, stop the microphone and show a restart button.
 - Show clear errors for invalid text or microphone problems, with retry and
   manual-mode options.
@@ -65,8 +68,8 @@ Open **http://127.0.0.1:5000** on the computer running the app.
 2. **Build the screens:** Add text entry, instructions, controls, meters, and restart.
 3. **Create the pixel effect:** Fit text to the screen, animate distortion,
    restore its shape, and add the burst.
-4. **Connect the microphone:** Add permission, calibration, sensitivity,
-   the three-second trigger, and manual mode.
+4. **Connect the microphone:** Add permission, sensitivity, a fixed noise floor,
+   the two-second trigger, and manual mode.
 5. **Test the experience:** Check timing, text limits, animation, errors,
    accessibility, cleanup, and mobile layouts.
 6. **Write the guide:** Explain startup, controls, troubleshooting, and phone setup.
@@ -88,7 +91,7 @@ testing, not public internet hosting.
 - English and Traditional Chinese fit on desktop and mobile screens.
 - Empty text and entries over 80 characters show helpful errors.
 - Louder input separates pixels; quiet restores them.
-- A burst happens once, only after three continuous seconds above the threshold.
+- A burst happens once, only after two continuous seconds above the threshold.
 - Releasing manual input or interrupting the session resets progress.
 - Permission denial, missing microphones, and unusable input have recovery options.
 - Restart and completion release microphone resources.
@@ -100,7 +103,7 @@ phone HTTPS permissions still need testing on the intended devices.
 
 ## Things to keep in mind
 
-- Microphone loudness varies by device; calibration and sensitivity are essential.
+- Microphone loudness varies by device; adjust sensitivity and OS input gain.
 - Prefer local fonts that support Traditional Chinese; glyph appearance may
   still vary between devices.
 - Short phrases are clearer than dense text.
