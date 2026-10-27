@@ -105,9 +105,12 @@ Releasing, cancelling a touch, or leaving the button's keyboard focus resets
 the hold. The same two-second burst rule applies.
 
 Controls support keyboard focus. Status updates are announced without narrating
-every frame. The canvas has an accessible text equivalent. The system's
-**reduced-motion** preference reduces displacement and replaces dispersal with
-a brief completion transition.
+every frame. The canvas has an accessible text equivalent.
+At maximum expansion (the top 2% of smoothed intensity), particles shake with
+independent random horizontal and vertical offsets of up to 1 pixel around
+their expanded positions until intensity drops or the burst begins.
+The system's **reduced-motion** preference disables shaking, reduces displacement,
+and replaces dispersal with a brief completion transition.
 
 ## Privacy
 

@@ -1,6 +1,6 @@
 import { characters, clamp } from "./interaction.js";
 
-export const MAX_PARTICLES = 12000;
+export const MAX_PARTICLES = 14000;
 
 export class PixelRenderer {
   constructor(canvas) {
@@ -93,11 +93,15 @@ export class PixelRenderer {
     ctx.fillStyle = "#000";
     const reduced = this.motion.matches;
     if (burstProgress >= 1 || (reduced && burstProgress > 0)) return;
+    // Smoothed intensity approaches 1 asymptotically, so treat its top 2% as maximum.
+    const shake = reduced || burstProgress > 0 ? 0 : clamp((intensity - .98) / .02) * 1;
     for (const p of this.particles) {
       const expansion = reduced ? intensity * .03 : intensity ** 1.5;
       const burst = reduced ? 0 : burstProgress * 14;
-      const x = p.x + p.dx * (expansion + burst * p.speed);
-      const y = p.y + p.dy * (expansion + burst * p.speed) + burst ** 2 * 2;
+      const x = p.x + p.dx * (expansion + burst * p.speed)
+        + (shake ? (Math.random() * 2 - 1) * shake : 0);
+      const y = p.y + p.dy * (expansion + burst * p.speed) + burst ** 2 * 2
+        + (shake ? (Math.random() * 2 - 1) * shake : 0);
       const cell = Math.max(1, p.size * (1 - clamp(burstProgress)));
       ctx.fillRect(Math.round(x), Math.round(y), cell, cell);
     }

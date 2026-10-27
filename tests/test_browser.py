@@ -410,6 +410,62 @@ def test_normal_motion_particle_budget_and_long_text_fit(page):
     expect(page.locator("#manual-hold")).to_be_visible()
 
 
+@pytest.mark.parametrize("reduced", [False, True])
+def test_particles_shake_only_at_maximum_expansion(page, reduced):
+    page.emulate_media(reduced_motion="reduce" if reduced else "no-preference")
+    enter_manual(page)
+    result = page.evaluate("""async () => {
+      const { PixelRenderer } = await import('/static/renderer.js');
+      const canvas = document.querySelector('#pixels');
+      const r = new PixelRenderer(canvas);
+      r.layout('Shake');
+      const original = JSON.stringify(r.particles);
+      const capture = (level, burst) => {
+        r.draw(level, burst);
+        return canvas.toDataURL();
+      };
+      const home = capture(0, 0);
+      const below = capture(.98, 0) === capture(.98, 0);
+      const maximumChanges = capture(1, 0) !== capture(1, 0);
+      const burstStable = capture(1, .1) === capture(1, .1);
+      const restored = home === capture(0, 0);
+      return { below, maximumChanges, burstStable, restored,
+               unchanged: original === JSON.stringify(r.particles) };
+    }""")
+    assert result["maximumChanges"] is not reduced
+    assert result["below"] and result["burstStable"]
+    assert result["restored"] and result["unchanged"]
+
+
+def test_random_shake_offsets_are_independent_and_do_not_accumulate(page):
+    enter_manual(page)
+    result = page.evaluate("""async () => {
+      const { PixelRenderer } = await import('/static/renderer.js');
+      const r = new PixelRenderer(document.querySelector('#pixels'));
+      r.layout('Shake');
+      r.particles = [{ x: 100, y: 100, dx: 20, dy: 30, speed: 1, size: 2 }];
+      const draws = [];
+      r.context.fillRect = (x, y) => draws.push([x, y]);
+      const random = Math.random;
+      const values = [0, 0, 1, 0, .5, 1];
+      let index = 0;
+      try {
+        Math.random = () => values[index++];
+        r.draw(1);
+        r.draw(1);
+        r.draw(1);
+        r.draw(0);
+      } finally {
+        Math.random = random;
+      }
+      return { draws, calls: index };
+    }""")
+    assert result == {
+        "draws": [[119, 129], [121, 129], [120, 131], [100, 100]],
+        "calls": 6,
+    }
+
+
 def test_fine_pixels_preserve_strokes_and_character_spacing(page):
     enter_manual(page, "讓壓力釋放")
     result = page.evaluate("""async () => {
