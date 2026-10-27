@@ -1,4 +1,4 @@
-# Pixel Burst
+# Pixel-Burst
 
 A local, two-color pixel-text experience for SD5913. Write something in English
 or Traditional Chinese, then use your voice to pull its pixels apart. Quiet lets them return.

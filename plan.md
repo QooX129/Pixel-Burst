@@ -1,4 +1,4 @@
-# Pixel Burst: Project Plan
+# Pixel-Burst: Project Plan
 
 ## The idea
 

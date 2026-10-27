@@ -11,7 +11,7 @@ def enter_manual(page, text="Let it out / 放下"):
 
 
 @pytest.mark.parametrize("width", [375, 1280])
-def test_supporting_text_scale_preserves_titles_and_buttons(page, width):
+def test_all_interface_text_scales_to_ninety_percent(page, width):
     page.set_viewport_size({"width": width, "height": 900})
     expected_sizes = {
         ".wordmark": 16,
@@ -31,7 +31,7 @@ def test_supporting_text_scale_preserves_titles_and_buttons(page, width):
         size = page.locator(selector).first.evaluate(
             "element => parseFloat(getComputedStyle(element).fontSize)"
         )
-        assert size == pytest.approx(expected, abs=.01), selector
+        assert size == pytest.approx(expected * .9, abs=.01), selector
     enter_manual(page)
     for selector, expected in {
         "#session-title": max(32, min(width * .05, 48)),
@@ -45,7 +45,7 @@ def test_supporting_text_scale_preserves_titles_and_buttons(page, width):
         size = page.locator(selector).first.evaluate(
             "element => parseFloat(getComputedStyle(element).fontSize)"
         )
-        assert size == pytest.approx(expected, abs=.01), selector
+        assert size == pytest.approx(expected * .9, abs=.01), selector
     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
 
 
